@@ -63,7 +63,7 @@ export const POST = async(req:NextRequest)=>{
             });
         };
     };
-    const validationResult = RetryablePromise.retry<object>(3, async (resolve, reject)=>{
+    const validationResult = await RetryablePromise.retry<object>(3, async (resolve, reject)=>{
         try{
             const content = `DATA: \n"${data}"\n\n-----------\nExpected JSON format: ${JSON.stringify(format, null, 2)}
             \n\n-----------\nValid JSON output in expected format:`
