@@ -47,18 +47,19 @@ export const POST = async(req:NextRequest)=>{
     const {data, format} = genericSchema.parse(body);
     const dynamicSchema = jsonSchemaToZod(format);
 
-    class RetryablePromise<T> extends Promise<T>{
-        static async retry(
-            retries: number,
-            executor: ()=> void
-        ){
-            
-        }
-            
-    }
-    }
-    const example = ()=>{}
+    type PromiseExecutor<T> = (resolve : (value: T)=> void, reject: (reason?: any)=> void)=> void;
 
-    RetryablePromise.retry
+    class RetryablePromise<T> extends Promise<T>{
+        static async retry<T>(
+            retries: number,
+            executor: PromiseExecutor<T>
+        ): Promise<T> {
+            return new RetryablePromise(executor).catch((error: any)=>{
+                console.error(`retrying due to error: ${error}`);
+                return retries > 0 ? RetryablePromise.retry(retries - 1, executor) : RetryablePromise.reject(error);
+            });
+        };
+    };
+    const idk = RetryablePromise.retry(3, ()=>"Ajay")
 
 };
