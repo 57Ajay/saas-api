@@ -1,5 +1,7 @@
-import { NextRequest } from "next/server";
+import { openai } from "@/app/lib/openai";
+import { NextRequest, NextResponse } from "next/server";
 import { number, z, ZodTypeAny } from "zod";
+import { EXAMPLE_ANSWER, EXAMPLE_PROMPT } from "./example";
 
 const determineSchemaType = (schema: any) => {
     if(!schema.hasOwnProperty("type")){
@@ -9,6 +11,7 @@ const determineSchemaType = (schema: any) => {
             return typeof schema;
         };
     };
+    return schema.type;
 };
 const jsonSchemaToZod = (schema: any):ZodTypeAny => {
     const type = determineSchemaType(schema);
@@ -60,6 +63,37 @@ export const POST = async(req:NextRequest)=>{
             });
         };
     };
-    const idk = RetryablePromise.retry(3, ()=>"Ajay")
+    const validationResult = RetryablePromise.retry<object>(3, async (resolve, reject)=>{
+        try{
+            const content = `DATA: \n"${data}"\n\n-----------\nExpected JSON format: ${JSON.stringify(format, null, 2)}
+            \n\n-----------\nValid JSON output in expected format:`
 
+            const res = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    {
+                        role: "assistant",
+                        content: `You are an AI that converts the data into the attached JOSN Formats. You respond with nothing but Valid JSON base on input data. Your outPut should be valid JSON, Nothing added before and after. You will begin with opening curlyBraces and ends with closing curlyBraces.Only if you absolutely can not determine a field, use the value null`,
+                    },
+                    {
+                        role: "user",
+                        content: EXAMPLE_PROMPT,
+                    },
+                    {
+                        role: "user",
+                        content: EXAMPLE_ANSWER
+                    },
+                    {
+                        role: 'user',
+                        content: content
+                    }
+                ],
+            })
+            const text = res.choices[0].message?.content;
+            const validationResult = dynamicSchema.parse(JSON.parse(text|| ""));
+        }catch(error){
+            reject(error);
+        };
+    })
+    return NextResponse.json(validationResult, {status: 200});
 };
